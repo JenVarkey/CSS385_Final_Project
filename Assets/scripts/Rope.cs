@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class Rope : MonoBehaviour
+public class Rope : Simulated
 {
     // Rope ends
     public Rigidbody2D startAnchor;
@@ -24,16 +24,30 @@ public class Rope : MonoBehaviour
     private List<Rigidbody2D> segments = new List<Rigidbody2D>();
     private List<HingeJoint2D> joints = new List<HingeJoint2D>();
     private List<Vector2> segmentPositions = new List<Vector2>();
-    private bool simulating = false;
+    private bool wasSimulatingLastTime = false;
 
-    private void Awake()
+    protected override void Awake()
     {
+        base.Awake();
         lineRenderer = GetComponent<LineRenderer>();
+    }
+
+    void Start()
+    {
+        RecalculateRopePosition();
     }
 
     private void LateUpdate()
     {
-        if (simulating)
+        // If just stopped simulating, recalculate the rope position 1 time
+        // (cannot be in stopSimulation because must run after the anchors stopSimulation)
+        if (!isInSimulation && wasSimulatingLastTime)
+        {
+            RecalculateRopePosition();
+        }
+        wasSimulatingLastTime = isInSimulation;
+
+        if (isInSimulation)
         {
             // If simulating, update line renderer based on segments
             lineRenderer.positionCount = segments.Count + 2;
@@ -47,7 +61,7 @@ public class Rope : MonoBehaviour
         }
         else
         {
-            // If not simulating, update line renderer based on segment locations
+            // Update line renderer based on segment locations
             lineRenderer.positionCount = segmentPositions.Count + 2;
             lineRenderer.SetPosition(0, startAnchor.position);
             for (int i = 0; i < segmentPositions.Count; i++)
@@ -72,8 +86,11 @@ public class Rope : MonoBehaviour
     }
 
     // Create the rope
-    public void GenerateRope()
+    public override void StartSimulation()
     {
+        base.StartSimulation();
+
+        // Create the physical rope
         Assert.IsTrue(startAnchor != null && endAnchor != null);
         RecalculateRopePosition();
         lineRenderer.positionCount = segmentCount + 2;
@@ -93,7 +110,6 @@ public class Rope : MonoBehaviour
 
         // Add the hinge from the last object to the end
         AddHingeJoint(endAnchor, previousBody, false);
-        simulating = true;
     }
 
     // Get the points that the rope segments will take
@@ -115,14 +131,19 @@ public class Rope : MonoBehaviour
     }
 
     // Use keyboard input to change the sag in the rope
-    public void UpdateRopeOnInput(bool dragging)
+    public void UpdateRopeOnInput(bool anchorsMoved)
     {
+        if (isInSimulation)
+        {
+            return; // Cannot update rope starting position when simulating
+        }
+
         // Get keyboard input (for sag changing)
         Keyboard keys = Keyboard.current;
         float input = (keys.downArrowKey.isPressed ? 0.05f : 0f) - (keys.upArrowKey.isPressed ? 0.05f : 0f);
 
         // If dragged to be longer than max length
-        if (dragging && GetParabolaLength(sagAmount) > maxRopeLength)
+        if (anchorsMoved && GetParabolaLength(sagAmount) > maxRopeLength)
         {
             float newSagAmount = GetParabolaSag(maxRopeLength) * (sagAmount < 0 ? -1 : 1);
             if (Mathf.Abs(newSagAmount) < Mathf.Abs(sagAmount))
@@ -131,7 +152,6 @@ public class Rope : MonoBehaviour
                 sagAmount = newSagAmount;
             }
         }
-
 
         // If rope length is less than max OR sag is decreasing (sagAmount * input <= 0), update sag amount
         // (this is because if sag is decreasing the rope is getting shorter so max doesn't matter)
@@ -189,18 +209,9 @@ public class Rope : MonoBehaviour
         joints.Add(joint);
     }
 
-    // Set the rope's sag
-    public void SetSag(float amount)
-    {
-        sagAmount = amount;
-        GenerateRope();
-    }
-
     // Delete the rope by deleting all rope segments
     public void ClearRope()
     {
-        simulating = false;
-
         // Clear all rope segments
         foreach (var segment in segments)
         {

@@ -35,9 +35,8 @@ public class PowerLine : Simulated
         Assert.IsNotNull(anchor1RB, "Power line anchor 1 is missing a Rigidbody2D");
         Assert.IsNotNull(anchor2RB, "Power line anchor 2 is missing a Rigidbody2D");
         rope = gameObject.AddComponent<Rope>();
-        rope.SetMaxRopeLength(maxRopeLength);
         rope.SetAnchors(anchor1RB, anchor2RB);
-        rope.RecalculateRopePosition();
+        rope.SetMaxRopeLength(maxRopeLength);
     }
 
     void FixedUpdate()
@@ -53,16 +52,6 @@ public class PowerLine : Simulated
         {
             rope.UpdateRopeOnInput(Dragging());
         }
-    }
-
-    public override void StartSimulation()
-    {
-        rope.GenerateRope();
-    }
-
-    public override void StopSimulation()
-    {
-        rope.RecalculateRopePosition();
     }
 
     private bool Selected()

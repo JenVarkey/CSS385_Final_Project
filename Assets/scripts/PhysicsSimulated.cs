@@ -15,6 +15,7 @@ public class PhysicsSimulated : Simulated
 
         // get object components and starting position
         body = GetComponent<Rigidbody2D>();
+        body.bodyType = RigidbodyType2D.Kinematic;
         startPosition = transform.position;
         body.freezeRotation = freezeRotation;
     }
@@ -43,5 +44,10 @@ public class PhysicsSimulated : Simulated
         body.rotation = startRotation.eulerAngles.z;
         transform.position = startPosition;
         transform.rotation = startRotation;
+    }
+
+    public Rigidbody2D GetRigidbody()
+    {
+        return body;
     }
 }

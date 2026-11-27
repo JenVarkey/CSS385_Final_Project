@@ -8,6 +8,8 @@ public class LevelManager : MonoBehaviour
     public GameObject winText;
     public GameObject loseText;
     public static bool isRunning { get; private set; }
+    public static bool hasWon = false;
+    public static bool hasLost = false;
 
     public string levelName;
 
@@ -26,9 +28,8 @@ public class LevelManager : MonoBehaviour
         {
             simulatedObjects[i].StartSimulation();
         }
-        Physics2D.simulationMode = SimulationMode2D.FixedUpdate;
         isRunning = true;
-        
+
     }
 
     // Stop playing the level
@@ -38,17 +39,18 @@ public class LevelManager : MonoBehaviour
         {
             simulatedObjects[i].StopSimulation();
         }
-        Physics2D.simulationMode = SimulationMode2D.Script;
-        // hide win text
+        // hide win and lose text
         if (winText != null)
         {
             winText.SetActive(false);
         }
-        isRunning = false;
-        if(loseText != null)
+        if (loseText != null)
         {
             loseText.SetActive(false);
         }
+        isRunning = false;
+        hasWon = false;
+        hasLost = false;
     }
 
     // Switch to the main menu
@@ -66,6 +68,12 @@ public class LevelManager : MonoBehaviour
     // To be called on win condition
     public void OnGoalMet()
     {
+        if (!isRunning || hasLost)
+        {
+            return;
+        }
+        hasWon = true;
+
         // Tell objects that the goal was met
         for (int i = 0; i < simulatedObjects.Length; i++)
         {
@@ -77,7 +85,7 @@ public class LevelManager : MonoBehaviour
         {
             winText.SetActive(true);
         }
-        if(levelName != null)
+        if (levelName != null)
         {
             SaveManager.CompleteLevel(levelName);
         }
@@ -85,16 +93,23 @@ public class LevelManager : MonoBehaviour
 
     public void OnGoalFailed()
     {
-
-        if (!isRunning)
+        if (!isRunning || hasWon)
         {
             return;
-        } 
+        }
+        hasLost = true;
+
+        // Tell objects that the goal was met
+        for (int i = 0; i < simulatedObjects.Length; i++)
+        {
+            simulatedObjects[i].OnLevelFailed();
+        }
+
         // display win text
         if (loseText != null)
         {
             loseText.SetActive(true);
         }
-        Physics2D.simulationMode = SimulationMode2D.Script;
+        //Physics2D.simulationMode = SimulationMode2D.Script;
     }
 }
